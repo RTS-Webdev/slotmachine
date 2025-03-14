@@ -1,16 +1,16 @@
 import { Item } from "./types";
 
 export const items: (Item & { weight: number })[] = [
-	{ name: "citron", value: 2, weight: 80 },
-	{ name: "kirsebær", value: 3, weight: 15 },
-	{ name: "appelsin", value: 4, weight: 12 },
-	{ name: "blomme", value: 5, weight: 10 },
-	{ name: "melon", value: 6, weight: 8 },
-	{ name: "jordbær", value: 7, weight: 6 },
-	{ name: "bar", value: 8, weight: 5 },
-	{ name: "klokker", value: 9, weight: 4 },
-	{ name: "diamant", value: 10, weight: 3 },
-	{ name: "syv", value: 15, weight: 1 },
+    { name: "citron", value: 2, weight: 40 },
+    { name: "kirsebær", value: 3, weight: 30 },
+    { name: "appelsin", value: 4, weight: 24 },
+    { name: "blomme", value: 5, weight: 20 },
+    { name: "melon", value: 6, weight: 16 },
+    { name: "jordbær", value: 7, weight: 12 },
+    { name: "bar", value: 8, weight: 5 },
+    { name: "klokker", value: 9, weight: 4 },
+    { name: "diamant", value: 10, weight: 3 },
+    { name: "syv", value: 15, weight: 1 },
 ];
 
 export function getWeightedRandomItem(): Item {
