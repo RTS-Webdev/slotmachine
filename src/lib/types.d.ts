@@ -1,3 +1,4 @@
 export interface Item {
-    name: string,
+    name: string
+    value: number
 }
