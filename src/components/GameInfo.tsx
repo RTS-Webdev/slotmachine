@@ -60,7 +60,7 @@ export default function GameInfo({ onClose }: GameInfoProps) {
 
                     <TabsContent value="symbols" className="space-y-4 mt-4">
                         <h3 className="text-lg font-bold">Symbol Information</h3>
-                        <div className="grid grid-cols-3 gap-4">
+                        <div className="grid grid-cols-4 gap-4">
                             {items.map((item) => (
                                 <div key={item.name} className="flex flex-col items-center p-4 border rounded-md">
                                     <Image
