@@ -1,0 +1,5 @@
+@tailwindcss
+
+body {
+  @apply bg-white text-black;
+}
