@@ -1,12 +1,12 @@
 import { Item } from "./types";
 
 export const items: (Item & { weight: number })[] = [
-	{ name: "citron", value: 2, weight: 20 },
-	{ name: "kirsebaer", value: 3, weight: 15 },
+	{ name: "citron", value: 2, weight: 80 },
+	{ name: "kirsebær", value: 3, weight: 15 },
 	{ name: "appelsin", value: 4, weight: 12 },
 	{ name: "blomme", value: 5, weight: 10 },
 	{ name: "melon", value: 6, weight: 8 },
-	{ name: "jordbaer", value: 7, weight: 6 },
+	{ name: "jordbær", value: 7, weight: 6 },
 	{ name: "bar", value: 8, weight: 5 },
 	{ name: "klokker", value: 9, weight: 4 },
 	{ name: "diamant", value: 10, weight: 3 },

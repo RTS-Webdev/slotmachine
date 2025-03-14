@@ -12,14 +12,19 @@ import { Coins, Info } from "lucide-react";
 import GameInfo from "./GameInfo";
 import WinChecker from "./winChecker";
 
+const STORAGE_KEY = "slotMachineCredits";
+const DEFAULT_CREDITS = 100;
+const REEL_SIZE = 20;
+
 export default function SlotMachine() {
     const [shuffledItemsList, setShuffledItemsList] = useState<Item[][]>([]);
     const [isSpinning, setIsSpinning] = useState(false);
-    const [credits, setCredits] = useState(100);
+    const [credits, setCredits] = useState<number>(DEFAULT_CREDITS);
     const [betAmount, setBetAmount] = useState(10);
     const [winAmount, setWinAmount] = useState(0);
     const [showInfo, setShowInfo] = useState(false);
     const [visibleItems, setVisibleItems] = useState<Item[]>([]);
+    const [isClient, setIsClient] = useState(false);
     
     const carousel1Ref = useRef<CarouselApi | null>(null);
     const carousel2Ref = useRef<CarouselApi | null>(null);
@@ -27,14 +32,25 @@ export default function SlotMachine() {
     
     const getCarouselRefs = () => [carousel1Ref.current, carousel2Ref.current, carousel3Ref.current];
 
-    const REEL_SIZE = 20;
-
     useEffect(() => {
+        setIsClient(true);
+        
+        const savedCredits = localStorage.getItem(STORAGE_KEY);
+        if (savedCredits) {
+            setCredits(parseInt(savedCredits, 10));
+        }
+        
         const initialShuffledItemsList: Item[][] = Array.from({ length: 3 }).map(
             () => generateWeightedItemsArray(REEL_SIZE)
         );
         setShuffledItemsList(initialShuffledItemsList);
     }, []);
+
+    useEffect(() => {
+        if (isClient) {
+            localStorage.setItem(STORAGE_KEY, credits.toString());
+        }
+    }, [credits, isClient]);
 
     useEffect(() => {
         if(!isSpinning) {
@@ -52,6 +68,10 @@ export default function SlotMachine() {
     const handleWin = (amount: number) => {
         setWinAmount(amount);
         addCredits(amount);
+    };
+
+    const resetCredits = () => {
+        setCredits(DEFAULT_CREDITS);
     };
 
     const spinReels = () => {
@@ -112,7 +132,13 @@ export default function SlotMachine() {
             
             <div className="flex flex-col items-center bg-gray-200 roundex-l shadow-2xl border-4 border-gray-300 p-4">
                 <div className="mb-4 flex justify-between w-full">
-                    <Credits credits={credits} winAmount={winAmount} onAddCredits={addCredits} />
+                    <Credits 
+                        credits={credits} 
+                        winAmount={winAmount} 
+                        onAddCredits={addCredits} 
+                        isSpinning={isSpinning}
+                        onResetCredits={resetCredits}
+                    />
                     <div className="flex gap-2">
                         <Button
                             variant={"outline"}
