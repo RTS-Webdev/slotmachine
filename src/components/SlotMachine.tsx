@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { Carousel, CarouselApi, CarouselContent, CarouselItem } from "./ui/carousel";
 import AutoScroll from "embla-carousel-auto-scroll";
-import { items, shuffleArray } from "@/lib/data";
+import { generateWeightedItemsArray } from "@/lib/data";
 import { useState, useEffect, useRef } from "react";
 import { Item } from "@/lib/types";
 import Credits from "./Credits";
@@ -27,9 +27,11 @@ export default function SlotMachine() {
     
     const getCarouselRefs = () => [carousel1Ref.current, carousel2Ref.current, carousel3Ref.current];
 
+    const REEL_SIZE = 20;
+
     useEffect(() => {
         const initialShuffledItemsList: Item[][] = Array.from({ length: 3 }).map(
-            () => shuffleArray(items)
+            () => generateWeightedItemsArray(REEL_SIZE)
         );
         setShuffledItemsList(initialShuffledItemsList);
     }, []);
@@ -60,7 +62,7 @@ export default function SlotMachine() {
         setIsSpinning(true);
 
         const newShuffledItemsList: Item[][] = Array.from({ length: 3 }).map(
-            () => shuffleArray(items)
+            () => generateWeightedItemsArray(REEL_SIZE)
         );
         setShuffledItemsList(newShuffledItemsList);
 
@@ -141,7 +143,7 @@ export default function SlotMachine() {
                                 plugins={[
                                     AutoScroll({
                                         active: isSpinning,
-                                        speed: 20,
+                                        speed: 10,
                                         startDelay: 0,
                                         direction: "backward",
                                     }),
@@ -153,8 +155,8 @@ export default function SlotMachine() {
                                 }}
                             >
                                 <CarouselContent className="max-h-48">
-                                    {shuffledItems.map((item) => (
-                                        <CarouselItem key={item.name} className="pt-4">
+                                    {shuffledItems.map((item, index) => (
+                                        <CarouselItem key={`${item.name}-${index}`} className="pt-4">
                                             <Image
                                                 src={`/icons/${item.name}.png`}
                                                 alt={item.name}
