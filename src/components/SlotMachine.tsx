@@ -1,10 +1,10 @@
 "use client";
 
 import Image from "next/image";
-import { Carousel, CarouselContent, CarouselItem } from "./ui/carousel";
+import { Carousel, CarouselApi, CarouselContent, CarouselItem } from "./ui/carousel";
 import AutoScroll from "embla-carousel-auto-scroll";
 import { items, shuffleArray } from "@/lib/data";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Item } from "@/lib/types";
 import Credits from "./Credits";
 import { Button } from "./ui/button";
@@ -18,6 +18,12 @@ export default function SlotMachine() {
     const [betAmount, setBetAmount] = useState(10);
     const [winAmount, setWinAmount] = useState(0);
     const [showInfo, setShowInfo] = useState(false);
+    
+    const carousel1Ref = useRef<CarouselApi | null>(null);
+    const carousel2Ref = useRef<CarouselApi | null>(null);
+    const carousel3Ref = useRef<CarouselApi | null>(null);
+    
+    const getCarouselRefs = () => [carousel1Ref.current, carousel2Ref.current, carousel3Ref.current];
 
     useEffect(() => {
         const initialShuffledItemsList: Item[][] = Array.from({ length: 3 }).map(
@@ -26,9 +32,18 @@ export default function SlotMachine() {
         setShuffledItemsList(initialShuffledItemsList);
     }, []);
 
+    useEffect(() => {
+        if(!isSpinning) {
+            setTimeout(() => {
+                const visibleItems = getVisibleItems();
+                console.log("items:", visibleItems.map((item) => item.name));
+            }, 200);
+        }
+    }, [isSpinning, shuffledItemsList]);
+
     const addCredits = (amount: number) => {
         setCredits((prev) => prev + amount);
-    }
+    };
 
     const spinReels = () => {
         if(isSpinning || credits < betAmount) return;
@@ -42,23 +57,56 @@ export default function SlotMachine() {
         );
         setShuffledItemsList(newShuffledItemsList);
 
-        const spinTime = 2000 + Math.random() * 2000
+        const spinTime = 2000 + Math.random() * 2000;
         setTimeout(() => {
-            stopSpinning()
-        }, spinTime)
-    }
+            stopSpinning();
+        }, spinTime);
+    };
+    
+    const getVisibleItems = (): Item[] => {
+        const visibleItems: Item[] = [];
+        const carouselRefs = getCarouselRefs();
+
+        shuffledItemsList.forEach((reel, idx) => {
+            const api = carouselRefs[idx];
+            if(api) {
+                const slideIdx = api.selectedScrollSnap() || 0;
+                visibleItems.push(reel[slideIdx % reel.length]);
+            } else {
+                visibleItems.push(reel[0]);
+            }
+        });
+
+        return visibleItems;
+    };
 
     const stopSpinning = () => {
         setIsSpinning(false);
+        const carouselRefs = getCarouselRefs();
 
-        const visibleItems = shuffledItemsList.map((reel) => reel[1]);
-        if(visibleItems[0].name === visibleItems[1].name && visibleItems[1].name === visibleItems[2].name) {
-            const winMultiplier = visibleItems[0].value || 2;
-            const win = betAmount * winMultiplier;
-            setWinAmount(win);
-            setCredits((prev) => prev + win);
-        }
-    }
+        carouselRefs.forEach((carousel, idx) => {
+            if(carousel) {
+                const randomIdx = Math.floor(Math.random() * shuffledItemsList[idx].length);
+                carousel.scrollTo(randomIdx, false);
+            }
+        });
+
+        setTimeout(() => {
+            const visibleItems = getVisibleItems();
+
+            if (
+                visibleItems.length === 3 &&
+                visibleItems[0]?.name === visibleItems[1]?.name &&
+                visibleItems[1]?.name === visibleItems[2]?.name
+            ) {
+                const winMultiplier = visibleItems[0].value || 2;
+                const win = betAmount * winMultiplier;
+
+                setWinAmount(win);
+                setCredits((prev) => prev + win);
+            }
+        }, 300);
+    };
 
     return (
         <div className="flex flex-col items-center gap-6">
@@ -85,7 +133,7 @@ export default function SlotMachine() {
                                 key={carouselIndex}
                                 className="border border-black px-8"
                                 orientation="vertical"
-                                draggable="false"
+                                draggable={false}
                                 opts={{
                                     align: "center",
                                     loop: true,
@@ -100,6 +148,11 @@ export default function SlotMachine() {
                                         direction: "backward",
                                     }),
                                 ]}
+                                setApi={(api) => {
+                                    if (carouselIndex === 0) carousel1Ref.current = api;
+                                    else if (carouselIndex === 1) carousel2Ref.current = api;
+                                    else if (carouselIndex === 2) carousel3Ref.current = api;
+                                }}
                             >
                                 <CarouselContent className="max-h-48">
                                     {shuffledItems.map((item) => (
@@ -135,7 +188,7 @@ export default function SlotMachine() {
                             </div>
                             <Button
                                 variant={"outline"}
-                                onClick={() => setBetAmount(Math.max(50, betAmount + 5))}
+                                onClick={() => setBetAmount(Math.min(50, betAmount + 5))}
                                 disabled={isSpinning}
                                 className="bg-gray-300 border-gray-400 hover:bg-gray-200"
                             >
