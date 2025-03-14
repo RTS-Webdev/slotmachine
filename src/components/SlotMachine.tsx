@@ -10,6 +10,7 @@ import Credits from "./Credits";
 import { Button } from "./ui/button";
 import { Coins, Info } from "lucide-react";
 import GameInfo from "./GameInfo";
+import WinChecker from "./winChecker";
 
 export default function SlotMachine() {
     const [shuffledItemsList, setShuffledItemsList] = useState<Item[][]>([]);
@@ -18,6 +19,7 @@ export default function SlotMachine() {
     const [betAmount, setBetAmount] = useState(10);
     const [winAmount, setWinAmount] = useState(0);
     const [showInfo, setShowInfo] = useState(false);
+    const [visibleItems, setVisibleItems] = useState<Item[]>([]);
     
     const carousel1Ref = useRef<CarouselApi | null>(null);
     const carousel2Ref = useRef<CarouselApi | null>(null);
@@ -35,14 +37,19 @@ export default function SlotMachine() {
     useEffect(() => {
         if(!isSpinning) {
             setTimeout(() => {
-                const visibleItems = getVisibleItems();
-                console.log("items:", visibleItems.map((item) => item.name));
+                const items = getVisibleItems();
+                setVisibleItems(items);
             }, 200);
         }
     }, [isSpinning, shuffledItemsList]);
 
     const addCredits = (amount: number) => {
         setCredits((prev) => prev + amount);
+    };
+
+    const handleWin = (amount: number) => {
+        setWinAmount(amount);
+        addCredits(amount);
     };
 
     const spinReels = () => {
@@ -64,20 +71,20 @@ export default function SlotMachine() {
     };
     
     const getVisibleItems = (): Item[] => {
-        const visibleItems: Item[] = [];
+        const items: Item[] = [];
         const carouselRefs = getCarouselRefs();
 
         shuffledItemsList.forEach((reel, idx) => {
             const api = carouselRefs[idx];
             if(api) {
                 const slideIdx = api.selectedScrollSnap() || 0;
-                visibleItems.push(reel[slideIdx % reel.length]);
+                items.push(reel[slideIdx % reel.length]);
             } else {
-                visibleItems.push(reel[0]);
+                items.push(reel[0]);
             }
         });
 
-        return visibleItems;
+        return items;
     };
 
     const stopSpinning = () => {
@@ -90,26 +97,17 @@ export default function SlotMachine() {
                 carousel.scrollTo(randomIdx, false);
             }
         });
-
-        setTimeout(() => {
-            const visibleItems = getVisibleItems();
-
-            if (
-                visibleItems.length === 3 &&
-                visibleItems[0]?.name === visibleItems[1]?.name &&
-                visibleItems[1]?.name === visibleItems[2]?.name
-            ) {
-                const winMultiplier = visibleItems[0].value || 2;
-                const win = betAmount * winMultiplier;
-
-                setWinAmount(win);
-                setCredits((prev) => prev + win);
-            }
-        }, 300);
     };
 
     return (
         <div className="flex flex-col items-center gap-6">
+            <WinChecker 
+                visibleItems={visibleItems}
+                betAmount={betAmount}
+                isSpinning={isSpinning}
+                onWin={handleWin}
+            />
+            
             <div className="flex flex-col items-center bg-gray-200 roundex-l shadow-2xl border-4 border-gray-300 p-4">
                 <div className="mb-4 flex justify-between w-full">
                     <Credits credits={credits} winAmount={winAmount} onAddCredits={addCredits} />
@@ -143,7 +141,7 @@ export default function SlotMachine() {
                                 plugins={[
                                     AutoScroll({
                                         active: isSpinning,
-                                        speed: 10,
+                                        speed: 20,
                                         startDelay: 0,
                                         direction: "backward",
                                     }),

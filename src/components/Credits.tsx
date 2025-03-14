@@ -52,7 +52,7 @@ export default function Credits({ credits, winAmount, onAddCredits }: CreditProp
             </div>
 
             {winAmount > 0 && (
-                <div className="bg-green-600 text-white px-4 py-2 rounded-md animate-pulse text-center">WIN! +{winAmount}</div>
+                <div className="bg-green-600 text-white px-4 py-2 rounded-md text-center">WIN! +{winAmount}</div>
             )}
         </div>
     )
