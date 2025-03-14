@@ -54,8 +54,8 @@ export default function Credits({ credits, winAmount, isSpinning, onAddCredits, 
                     </DialogTrigger>
                     <DialogContent>
                         <DialogHeader>
-                            <DialogTitle>Add Credits</DialogTitle>
-                            <DialogDescription>Select an amount to add to your balance</DialogDescription>
+                            <DialogTitle>Tilføj Credits</DialogTitle>
+                            <DialogDescription>Vælg et beløb for at tilføje til din saldo</DialogDescription>
                         </DialogHeader>
                         <div className="grid grid-cols-3 gap-4 py-4">
                             <Button onClick={() => handleAddCredits(100)}>
