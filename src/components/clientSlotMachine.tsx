@@ -11,6 +11,7 @@ import { Button } from "./ui/button";
 import { Coins, Info } from "lucide-react";
 import GameInfo from "./GameInfo";
 import WinChecker from "./winChecker";
+import { cn } from "@/lib/utils";
 
 const STORAGE_KEY = "slotMachineCredits";
 const DEFAULT_CREDITS = 100;
@@ -24,6 +25,7 @@ export default function ClientOnlySlotMachine() {
     const [winAmount, setWinAmount] = useState(0);
     const [showInfo, setShowInfo] = useState(false);
     const [visibleItems, setVisibleItems] = useState<Item[]>([]);
+    const [autoSpin, setAutoSpin] = useState(false);
     
     const carousel1Ref = useRef<CarouselApi | null>(null);
     const carousel2Ref = useRef<CarouselApi | null>(null);
@@ -58,6 +60,16 @@ export default function ClientOnlySlotMachine() {
     useEffect(() => {
         localStorage.setItem(STORAGE_KEY, credits.toString());
     }, [credits]);
+
+    useEffect(() => {
+        if (!isSpinning && autoSpin) {
+            const timer = setTimeout(() => {
+                spinReels();
+            }, 2000);
+            
+            return () => clearTimeout(timer);
+        }
+    }, [isSpinning, autoSpin]);
 
     useEffect(() => {
         if (Object.keys(imagePaths).length > 0) {
@@ -124,6 +136,10 @@ export default function ClientOnlySlotMachine() {
 
         return items;
     };
+
+    const handleAutoSpin = () => {
+        setAutoSpin(!autoSpin)
+    }
 
     const stopSpinning = () => {
         setIsSpinning(false);
@@ -252,6 +268,15 @@ export default function ClientOnlySlotMachine() {
                             className="bg-red-600 hover:bg-red-700 text-white font-bold px-8 py-6 rounded-full shadow-lg transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:hover:scale-100"
                         >
                             {isSpinning ? "Spinning" : "Spin"}
+                        </Button>
+                        <Button
+                            onClick={handleAutoSpin}
+                            disabled={isSpinning || credits < betAmount}
+                            className={cn("text-white font-bold px-8 py-6 rounded-full shadow-lg transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:hover:scale-100",
+                                autoSpin ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"
+                            )}
+                        >
+                            Auto Spin
                         </Button>
                     </div>
                 </div>
