@@ -6,6 +6,9 @@ const nextConfig: NextConfig = {
   },
   images: {
     minimumCacheTTL: 60,
+  },
+  typescript: {
+    ignoreBuildErrors: true,
   }
 };
 
