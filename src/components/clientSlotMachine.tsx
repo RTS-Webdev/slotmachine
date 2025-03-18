@@ -5,27 +5,62 @@ import { Carousel, CarouselApi, CarouselContent, CarouselItem } from "./ui/carou
 import AutoScroll from "embla-carousel-auto-scroll";
 import { generateWeightedItemsArray } from "@/lib/data";
 import { useState, useEffect, useRef, useMemo } from "react";
-import { Item } from "@/lib/types";
+import { Item, PlayerStats } from "@/lib/types";
 import Credits from "./Credits";
 import { Button } from "./ui/button";
 import { Coins, Info } from "lucide-react";
 import GameInfo from "./GameInfo";
 import WinChecker from "./winChecker";
-import { cn } from "@/lib/utils";
+import { cn, useLocalStorage } from "@/lib/utils";
+import { useRouter } from "next/navigation";
 
-const STORAGE_KEY = "slotMachineCredits";
-const DEFAULT_CREDITS = 100;
-const REEL_SIZE = 20;
+export const STORAGE_KEY = "slotMachineCredits";
+export const BETAMOUNT_KEY = "slotMachineBetAmount";
+export const STATS_KEY = "slotMachineStats";
+export const DEFAULT_CREDITS = 100;
+export const REEL_SIZE = 20;
+
+export function getPlayerStats(): PlayerStats[] {
+    const stats = localStorage.getItem(STATS_KEY);
+    return stats ? JSON.parse(stats) : [];
+}
+
+export function updatePlayerStats(name: string, win: number, bet: number) {
+    const stats = getPlayerStats();
+    const playerIndex = stats.findIndex(p => p.name === name);
+    
+    if (playerIndex === -1) {
+        // New player
+        stats.push({
+            name,
+            totalWins: win > 0 ? win : 0,
+            totalLosses: win === 0 ? bet : 0,
+            gamesPlayed: 1
+        });
+    } else {
+        // Update existing player
+        stats[playerIndex] = {
+            ...stats[playerIndex],
+            totalWins: stats[playerIndex].totalWins + (win > 0 ? win : 0),
+            totalLosses: stats[playerIndex].totalLosses + (win === 0 ? bet : 0),
+            gamesPlayed: stats[playerIndex].gamesPlayed + 1
+        };
+    }
+
+    localStorage.setItem(STATS_KEY, JSON.stringify(stats));
+}
 
 export default function ClientOnlySlotMachine() {
     const [shuffledItemsList, setShuffledItemsList] = useState<Item[][]>([]);
     const [isSpinning, setIsSpinning] = useState(false);
-    const [credits, setCredits] = useState<number>(DEFAULT_CREDITS);
-    const [betAmount, setBetAmount] = useState(10);
+    const [credits, setCredits] = useLocalStorage(STORAGE_KEY, DEFAULT_CREDITS);
+    const [betAmount, setBetAmount] = useLocalStorage(BETAMOUNT_KEY, 10);
     const [winAmount, setWinAmount] = useState(0);
     const [showInfo, setShowInfo] = useState(false);
     const [visibleItems, setVisibleItems] = useState<Item[]>([]);
     const [autoSpin, setAutoSpin] = useState(false);
+    const [playerName, setPlayerName] = useState<string>("");
+    const router = useRouter();
     
     const carousel1Ref = useRef<CarouselApi | null>(null);
     const carousel2Ref = useRef<CarouselApi | null>(null);
@@ -46,6 +81,15 @@ export default function ClientOnlySlotMachine() {
     }, [shuffledItemsList]);
 
     useEffect(() => {
+        // Check for player name
+        const savedName = localStorage.getItem("slotMachinePlayerName");
+        if (!savedName) {
+            router.push("/"); // Redirect to name entry if no name exists
+            return;
+        }
+        setPlayerName(savedName);
+
+        // Load other initial data
         const savedCredits = localStorage.getItem(STORAGE_KEY);
         if (savedCredits) {
             setCredits(parseInt(savedCredits, 10));
@@ -62,12 +106,16 @@ export default function ClientOnlySlotMachine() {
     }, [credits]);
 
     useEffect(() => {
-        if (!isSpinning && autoSpin) {
-            const timer = setTimeout(() => {
-                spinReels();
-            }, 2000);
-            
-            return () => clearTimeout(timer);
+        if (autoSpin) {
+            if (!isSpinning) {
+                // When auto spin is active and spinning has stopped,
+                // wait 2 seconds before starting the next spin
+                const timer = setTimeout(() => {
+                    spinReels();
+                }, 2000);
+                
+                return () => clearTimeout(timer);
+            }
         }
     }, [isSpinning, autoSpin]);
 
@@ -90,31 +138,37 @@ export default function ClientOnlySlotMachine() {
     }, [isSpinning, shuffledItemsList]);
 
     const addCredits = (amount: number) => {
-        setCredits((prev) => prev + amount);
+        const newCredits = credits + amount;
+        setCredits(newCredits);
+        localStorage.setItem(STORAGE_KEY, newCredits.toString());
     };
 
     const handleWin = (amount: number) => {
         setWinAmount(amount);
         addCredits(amount);
+        updatePlayerStats(playerName, amount, betAmount);
     };
 
     const resetCredits = () => {
         setCredits(DEFAULT_CREDITS);
+        localStorage.setItem(STORAGE_KEY, DEFAULT_CREDITS.toString());
     };
 
     const spinReels = () => {
         if(isSpinning || credits < betAmount) return;
 
-        setCredits((prev) => prev - betAmount);
+        addCredits(-betAmount);
         setWinAmount(0);
         setIsSpinning(true);
+
+        updatePlayerStats(playerName, 0, betAmount);
 
         const newShuffledItemsList: Item[][] = Array.from({ length: 3 }).map(
             () => generateWeightedItemsArray(REEL_SIZE)
         );
         setShuffledItemsList(newShuffledItemsList);
 
-        const spinTime = 2000 + Math.random() * 2000;
+        const spinTime = 1000 + Math.random() * 2000;
         setTimeout(() => {
             stopSpinning();
         }, spinTime);
@@ -126,19 +180,25 @@ export default function ClientOnlySlotMachine() {
 
         shuffledItemsList.forEach((reel, idx) => {
             const api = carouselRefs[idx];
-            if(api) {
-                const slideIdx = api.selectedScrollSnap() || 0;
-                items.push(reel[slideIdx % reel.length]);
-            } else if (reel.length > 0) {
-                items.push(reel[0]);
+            if (api) {
+                const slideIdx = api.selectedScrollSnap();
+                if (slideIdx !== undefined && reel.length > 0) {
+                    items.push(reel[slideIdx % reel.length]);
+                }
             }
         });
 
-        return items;
+        return items.length === 3 ? items : [];
     };
 
     const handleAutoSpin = () => {
-        setAutoSpin(!autoSpin)
+        const newAutoSpin = !autoSpin;
+        setAutoSpin(newAutoSpin);
+        
+        // If turning on auto spin and not currently spinning, start spinning immediately
+        if (newAutoSpin && !isSpinning && credits >= betAmount) {
+            spinReels();
+        }
     }
 
     const stopSpinning = () => {
@@ -146,11 +206,16 @@ export default function ClientOnlySlotMachine() {
         const carouselRefs = getCarouselRefs();
 
         carouselRefs.forEach((carousel, idx) => {
-            if(carousel && shuffledItemsList[idx]) {
+            if (carousel && shuffledItemsList[idx]) {
                 const randomIdx = Math.floor(Math.random() * shuffledItemsList[idx].length);
-                carousel.scrollTo(randomIdx, false);
+                carousel.scrollTo(randomIdx);
             }
         });
+
+        setTimeout(() => {
+            const items = getVisibleItems();
+            setVisibleItems(items);
+        }, 200);
     };
 
     // Show loading state if data isn't ready yet
@@ -167,8 +232,8 @@ export default function ClientOnlySlotMachine() {
                 onWin={handleWin}
             />
             
-            <div className="flex flex-col items-center bg-gray-200 roundex-l shadow-2xl border-4 border-gray-300 p-4">
-                <div className="mb-4 flex justify-between w-full">
+            <div className="flex flex-col items-center bg-gray-200 roundex-l shadow-2xl border-4 border-gray-300 p-6">
+                <div className="mb-6 flex justify-between w-full">
                     <Credits 
                         credits={credits} 
                         winAmount={winAmount} 
@@ -188,13 +253,13 @@ export default function ClientOnlySlotMachine() {
                     </div>
                 </div>
 
-                <div className="relative bg-black p-6 rounded-lg border-2 border-gray-300 mb-6">
+                <div className="relative bg-black p-8 rounded-lg border-2 border-gray-300 mb-8">
                     <div className="absolute inset-0 bg-black opacity-50 rounded-lg" />
-                    <div className="flex flex-row gap-2 relative z-10">
+                    <div className="flex flex-row gap-4 relative z-10">
                         {shuffledItemsList.map((shuffledItems, carouselIndex) => (
                             <Carousel
                                 key={carouselIndex}
-                                className="border border-black px-8"
+                                className="border border-black px-10"
                                 orientation="vertical"
                                 draggable={false}
                                 opts={{
@@ -206,7 +271,7 @@ export default function ClientOnlySlotMachine() {
                                 plugins={[
                                     AutoScroll({
                                         active: isSpinning,
-                                        speed: 10,
+                                        speed: 20,
                                         startDelay: 0,
                                         direction: "backward",
                                     }),
@@ -237,18 +302,18 @@ export default function ClientOnlySlotMachine() {
                     </div>
                 </div>
 
-                <div className="flex flex-col gap-4 w-full">
-                    <div className="flex justify-between items-center">
-                        <div className="flex gap-2">
+                <div className="flex flex-col gap-6 w-full">
+                    <div className="flex justify-between items-center gap-4">
+                        <div className="flex gap-3">
                             <Button
                                 variant={"outline"}
                                 onClick={() => setBetAmount(Math.max(5, betAmount - 5))}
                                 disabled={isSpinning}
-                                className="bg-gray-300 border-gray-400 hover:bg-gray-200"
+                                className="bg-gray-300 border-gray-400 hover:bg-gray-200 px-4"
                             >
                                 -
                             </Button>
-                            <div className="flex items-center gap-2 bg-gray-300 px-4 py-2 rounded-md border border-gray-400">
+                            <div className="flex items-center gap-2 bg-gray-300 px-6 py-2 rounded-md border border-gray-400">
                                 <Coins className="h-4 w-4" />
                                 <span className="font-bold">{betAmount}</span>
                             </div>
@@ -256,28 +321,30 @@ export default function ClientOnlySlotMachine() {
                                 variant={"outline"}
                                 onClick={() => setBetAmount(Math.min(50, betAmount + 5))}
                                 disabled={isSpinning}
-                                className="bg-gray-300 border-gray-400 hover:bg-gray-200"
+                                className="bg-gray-300 border-gray-400 hover:bg-gray-200 px-4"
                             >
                                 +
                             </Button>
                         </div>
 
-                        <Button
-                            onClick={spinReels}
-                            disabled={isSpinning || credits < betAmount}
-                            className="bg-red-600 hover:bg-red-700 text-white font-bold px-8 py-6 rounded-full shadow-lg transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:hover:scale-100"
-                        >
-                            {isSpinning ? "Spinning" : "Spin"}
-                        </Button>
-                        <Button
-                            onClick={handleAutoSpin}
-                            disabled={isSpinning || credits < betAmount}
-                            className={cn("text-white font-bold px-8 py-6 rounded-full shadow-lg transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:hover:scale-100",
-                                autoSpin ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"
-                            )}
-                        >
-                            Auto Spin
-                        </Button>
+                        <div className="flex gap-4">
+                            <Button
+                                onClick={spinReels}
+                                disabled={isSpinning || credits < betAmount}
+                                className="bg-red-600 hover:bg-red-700 text-white font-bold px-8 py-6 rounded-full shadow-lg transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:hover:scale-100"
+                            >
+                                {isSpinning ? "Spinning" : "Spin"}
+                            </Button>
+                            <Button
+                                onClick={handleAutoSpin}
+                                disabled={credits < betAmount}
+                                className={cn("text-white font-bold px-8 py-6 rounded-full shadow-lg transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:hover:scale-100",
+                                    autoSpin ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"
+                                )}
+                            >
+                                Auto Spin
+                            </Button>
+                        </div>
                     </div>
                 </div>
             </div>

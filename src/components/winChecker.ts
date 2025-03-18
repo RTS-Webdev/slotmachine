@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { Item } from "@/lib/types";
 
 interface WinCheckerProps {
@@ -16,20 +16,35 @@ export default function WinChecker({
   isSpinning,
   onWin,
 }: WinCheckerProps) {
+  const hasCheckedRef = useRef(false);
+
   useEffect(() => {
-    if (!isSpinning && visibleItems.length === 3) {
-      checkForWin();
+    // Reset check flag when spinning starts
+    if (isSpinning) {
+      hasCheckedRef.current = false;
+      return;
     }
-  }, [visibleItems, isSpinning]);
+
+    // Only check for win when spinning stops and we have valid items
+    if (!isSpinning && !hasCheckedRef.current && visibleItems.length === 3 && visibleItems.every(item => item?.name)) {
+      // Add a delay to ensure carousel has settled
+      const timer = setTimeout(() => {
+        checkForWin();
+        hasCheckedRef.current = true;
+      }, 500);
+
+      return () => clearTimeout(timer);
+    }
+  }, [visibleItems, isSpinning, betAmount]);
 
   const checkForWin = () => {
+    console.log("Checking items:", visibleItems);
     if (
       visibleItems[0]?.name === visibleItems[1]?.name &&
       visibleItems[1]?.name === visibleItems[2]?.name
     ) {
       const winMultiplier = visibleItems[0].value || 2;
       const winAmount = betAmount * winMultiplier;
-            
       onWin(winAmount);
     }
   };

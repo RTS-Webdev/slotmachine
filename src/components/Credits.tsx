@@ -21,10 +21,11 @@ export default function Credits({ credits, winAmount, isSpinning, onAddCredits, 
     useEffect(() => {
         if (isSpinning) {
             setShowWin(false);
+            setLastWinAmount(0);
             return;
         }
         
-        if (winAmount > 0 && winAmount !== lastWinAmount && !isSpinning) {
+        if (winAmount > 0 && !isSpinning) {
             setShowWin(true);
             setLastWinAmount(winAmount);
 
@@ -34,10 +35,10 @@ export default function Credits({ credits, winAmount, isSpinning, onAddCredits, 
 
             return () => clearTimeout(timer);
         }
-    }, [winAmount, isSpinning, lastWinAmount]);
+    }, [winAmount, isSpinning]);
 
     const handleAddCredits = (amount: number) => {
-        onAddCredits(amount)
+        onAddCredits(amount);
     }
 
     return (
