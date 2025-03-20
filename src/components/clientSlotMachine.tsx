@@ -5,50 +5,19 @@ import { Carousel, CarouselApi, CarouselContent, CarouselItem } from "./ui/carou
 import AutoScroll from "embla-carousel-auto-scroll";
 import { generateWeightedItemsArray } from "@/lib/data";
 import { useState, useEffect, useRef, useMemo } from "react";
-import { Item, PlayerStats } from "@/lib/types";
+import { Item } from "@/lib/types";
 import Credits from "./Credits";
 import { Button } from "./ui/button";
 import { Coins, Info } from "lucide-react";
 import GameInfo from "./GameInfo";
 import WinChecker from "./winChecker";
 import { cn, useLocalStorage } from "@/lib/utils";
-import { useRouter } from "next/navigation";
 
 export const STORAGE_KEY = "slotMachineCredits";
 export const BETAMOUNT_KEY = "slotMachineBetAmount";
 export const STATS_KEY = "slotMachineStats";
 export const DEFAULT_CREDITS = 100;
 export const REEL_SIZE = 20;
-
-export function getPlayerStats(): PlayerStats[] {
-    const stats = localStorage.getItem(STATS_KEY);
-    return stats ? JSON.parse(stats) : [];
-}
-
-export function updatePlayerStats(name: string, win: number, bet: number) {
-    const stats = getPlayerStats();
-    const playerIndex = stats.findIndex(p => p.name === name);
-    
-    if (playerIndex === -1) {
-        // New player
-        stats.push({
-            name,
-            totalWins: win > 0 ? win : 0,
-            totalLosses: win === 0 ? bet : 0,
-            gamesPlayed: 1
-        });
-    } else {
-        // Update existing player
-        stats[playerIndex] = {
-            ...stats[playerIndex],
-            totalWins: stats[playerIndex].totalWins + (win > 0 ? win : 0),
-            totalLosses: stats[playerIndex].totalLosses + (win === 0 ? bet : 0),
-            gamesPlayed: stats[playerIndex].gamesPlayed + 1
-        };
-    }
-
-    localStorage.setItem(STATS_KEY, JSON.stringify(stats));
-}
 
 export default function ClientOnlySlotMachine() {
     const [shuffledItemsList, setShuffledItemsList] = useState<Item[][]>([]);
@@ -59,8 +28,6 @@ export default function ClientOnlySlotMachine() {
     const [showInfo, setShowInfo] = useState(false);
     const [visibleItems, setVisibleItems] = useState<Item[]>([]);
     const [autoSpin, setAutoSpin] = useState(false);
-    const [playerName, setPlayerName] = useState<string>("");
-    const router = useRouter();
     
     const carousel1Ref = useRef<CarouselApi | null>(null);
     const carousel2Ref = useRef<CarouselApi | null>(null);
@@ -81,15 +48,6 @@ export default function ClientOnlySlotMachine() {
     }, [shuffledItemsList]);
 
     useEffect(() => {
-        // Check for player name
-        const savedName = localStorage.getItem("slotMachinePlayerName");
-        if (!savedName) {
-            router.push("/"); // Redirect to name entry if no name exists
-            return;
-        }
-        setPlayerName(savedName);
-
-        // Load other initial data
         const savedCredits = localStorage.getItem(STORAGE_KEY);
         if (savedCredits) {
             setCredits(parseInt(savedCredits, 10));
@@ -146,7 +104,6 @@ export default function ClientOnlySlotMachine() {
     const handleWin = (amount: number) => {
         setWinAmount(amount);
         addCredits(amount);
-        updatePlayerStats(playerName, amount, betAmount);
     };
 
     const resetCredits = () => {
@@ -160,8 +117,6 @@ export default function ClientOnlySlotMachine() {
         addCredits(-betAmount);
         setWinAmount(0);
         setIsSpinning(true);
-
-        updatePlayerStats(playerName, 0, betAmount);
 
         const newShuffledItemsList: Item[][] = Array.from({ length: 3 }).map(
             () => generateWeightedItemsArray(REEL_SIZE)
