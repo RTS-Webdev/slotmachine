@@ -28,6 +28,7 @@ export default function ClientOnlySlotMachine() {
     const [showInfo, setShowInfo] = useState(false);
     const [visibleItems, setVisibleItems] = useState<Item[]>([]);
     const [autoSpin, setAutoSpin] = useState(false);
+    const [spinSpeed, setSpinSpeed] = useState(20);
     
     const carousel1Ref = useRef<CarouselApi | null>(null);
     const carousel2Ref = useRef<CarouselApi | null>(null);
@@ -117,15 +118,44 @@ export default function ClientOnlySlotMachine() {
         addCredits(-betAmount);
         setWinAmount(0);
         setIsSpinning(true);
+        setSpinSpeed(20); // Start at maximum speed
 
         const newShuffledItemsList: Item[][] = Array.from({ length: 3 }).map(
             () => generateWeightedItemsArray(REEL_SIZE)
         );
         setShuffledItemsList(newShuffledItemsList);
 
-        const spinTime = 1000 + Math.random() * 2000;
+        // Base spin time
+        const spinTime = 2000;
+        
+        // Main spin at full speed
         setTimeout(() => {
-            stopSpinning();
+            // First slowdown - slight reduction
+            setSpinSpeed(16);
+            
+            setTimeout(() => {
+                // Second slowdown - moderate reduction
+                setSpinSpeed(12);
+                
+                setTimeout(() => {
+                    // Third slowdown - significant reduction
+                    setSpinSpeed(8);
+                    
+                    setTimeout(() => {
+                        // Fourth slowdown - almost stopping
+                        setSpinSpeed(4);
+                        
+                        setTimeout(() => {
+                            // Final very slow crawl
+                            setSpinSpeed(2);
+                            
+                            setTimeout(() => {
+                                stopSpinning();
+                            }, 600);
+                        }, 500);
+                    }, 500);
+                }, 400);
+            }, 400);
         }, spinTime);
     };
     
@@ -158,15 +188,8 @@ export default function ClientOnlySlotMachine() {
 
     const stopSpinning = () => {
         setIsSpinning(false);
-        const carouselRefs = getCarouselRefs();
-
-        carouselRefs.forEach((carousel, idx) => {
-            if (carousel && shuffledItemsList[idx]) {
-                const randomIdx = Math.floor(Math.random() * shuffledItemsList[idx].length);
-                carousel.scrollTo(randomIdx);
-            }
-        });
-
+        
+        // Get the current visible items without repositioning
         setTimeout(() => {
             const items = getVisibleItems();
             setVisibleItems(items);
@@ -226,7 +249,7 @@ export default function ClientOnlySlotMachine() {
                                 plugins={[
                                     AutoScroll({
                                         active: isSpinning,
-                                        speed: 20,
+                                        speed: spinSpeed,
                                         startDelay: 0,
                                         direction: "backward",
                                     }),
